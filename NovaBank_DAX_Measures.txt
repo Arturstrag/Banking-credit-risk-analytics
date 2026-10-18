@@ -1,0 +1,135 @@
+NovaBank – Słownik miar DAX
+
+1. Outstanding Balance
+Outstanding Balance =
+SUM(
+    v_loan_monthly_snapshot_clean[outstanding_balance_pln]
+)
+
+2. Active Loans
+Active Loans =
+DISTINCTCOUNT(
+    v_loan_monthly_snapshot_clean[loan_id]
+)
+
+3. DPD30 Loans
+DPD30 Loans =
+CALCULATE(
+    DISTINCTCOUNT(v_loan_monthly_snapshot_clean[loan_id]),
+    v_loan_monthly_snapshot_clean[days_past_due] >= 30
+)
+
+4. DPD30 Rate
+DPD30 Rate =
+DIVIDE(
+    [DPD30 Loans],
+    [Active Loans],
+    0
+)
+
+5. DPD90 Loans
+DPD90 Loans =
+CALCULATE(
+    DISTINCTCOUNT(v_loan_monthly_snapshot_clean[loan_id]),
+    v_loan_monthly_snapshot_clean[days_past_due] >= 90
+)
+
+6. DPD90 Rate
+DPD90 Rate =
+DIVIDE(
+    [DPD90 Loans],
+    [Active Loans],
+    0
+)
+
+7. Interest Income
+Interest Income =
+SUM(
+    v_loan_monthly_snapshot_clean[monthly_interest_income_pln]
+)
+
+8. Estimated Credit Loss
+Estimated Credit Loss =
+SUM(
+    v_loan_monthly_snapshot_clean[estimated_credit_loss_pln]
+)
+
+9. Risk Adjusted Income
+Risk Adjusted Income =
+[Interest Income] - [Estimated Credit Loss]
+
+10. Latest Snapshot Date
+Latest Snapshot Date =
+CALCULATE(
+    MAX(v_loan_monthly_snapshot_clean[snapshot_month]),
+    ALL(v_loan_monthly_snapshot_clean)
+)
+
+11. Current Outstanding Balance
+Current Outstanding Balance =
+VAR LatestDate = [Latest Snapshot Date]
+RETURN
+CALCULATE(
+    [Outstanding Balance],
+    v_loan_monthly_snapshot_clean[snapshot_month] = LatestDate
+)
+
+12. Current Active Loans
+Current Active Loans =
+VAR LatestDate = [Latest Snapshot Date]
+RETURN
+CALCULATE(
+    [Active Loans],
+    v_loan_monthly_snapshot_clean[snapshot_month] = LatestDate
+)
+
+13. Current DPD30 Rate
+Current DPD30 Rate =
+VAR LatestDate = [Latest Snapshot Date]
+RETURN
+CALCULATE(
+    [DPD30 Rate],
+    v_loan_monthly_snapshot_clean[snapshot_month] = LatestDate
+)
+
+14. Current DPD90 Rate
+Current DPD90 Rate =
+VAR LatestDate = [Latest Snapshot Date]
+RETURN
+CALCULATE(
+    [DPD90 Rate],
+    v_loan_monthly_snapshot_clean[snapshot_month] = LatestDate
+)
+
+15. Current Risk Adjusted Income
+Current Risk Adjusted Income =
+VAR LatestDate = [Latest Snapshot Date]
+RETURN
+CALCULATE(
+    [Risk Adjusted Income],
+    v_loan_monthly_snapshot_clean[snapshot_month] = LatestDate
+)
+
+16. Total Due Amount
+Total Due Amount =
+SUM(
+    v_payments_clean[due_amount_pln]
+)
+
+17. Total Paid Amount
+Total Paid Amount =
+SUM(
+    v_payments_clean[paid_amount_pln]
+)
+
+18. Collection Ratio
+Collection Ratio =
+DIVIDE(
+    [Total Paid Amount],
+    [Total Due Amount],
+    0
+)
+
+19. Payment Count
+Payment Count =
+COUNTROWS(v_payments_clean)

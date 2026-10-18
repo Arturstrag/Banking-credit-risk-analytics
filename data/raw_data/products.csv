@@ -1,0 +1,9 @@
+product_id,product_name,customer_segment,security_type,repayment_type,base_rate,annual_fee_rate
+P01,Personal Loan,Retail,Unsecured,Installment,0.119,0.018
+P02,Mortgage,Retail,Secured,Installment,0.069,0.01
+P03,Credit Card,Retail,Unsecured,Revolving,0.179,0.025
+P04,Auto Loan,Retail,Secured,Installment,0.089,0.014
+P05,SME Term Loan,SME,Unsecured,Installment,0.129,0.02
+P06,SME Investment Loan,SME,Secured,Installment,0.099,0.017
+P07,Business Overdraft,SME,Unsecured,Revolving,0.139,0.023
+P08,Green Equipment Loan,SME,Secured,Installment,0.084,0.015
