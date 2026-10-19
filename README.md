@@ -118,6 +118,9 @@ SELECT
 FROM customers;
 ```
 
+
+![Missing_Income](images/missing_monthly_income.png)
+
 Brakujących dochodów nie zastępowano średnią ani medianą, ponieważ nie było wystarczających informacji pozwalających wiarygodnie określić rzeczywisty dochód klienta. Wartości pozostawiono jako `NULL`.
 
 Dzięki temu rekord klienta nadal może być wykorzystywany w analizie, a jednocześnie do danych nie są wprowadzane sztucznie oszacowane wartości, które mogłyby zniekształcić analizę ryzyka lub segmentację klientów.
@@ -132,14 +135,21 @@ W **85 rekordach** brakowało informacji o mieście.
 
 Brakujące wartości były zapisane jako pusty tekst, a nie jako `NULL`.
 
-Brakujące wartości zastąpiono wartością `Unknown`.
-
 ```sql
-COALESCE(
-    NULLIF(TRIM(city), ''),
-    'Unknown'
-)::varchar AS city
+SELECT
+    COUNT(*) AS total_customers,
+    COUNT(*) FILTER (
+        WHERE city IS NULL
+    ) AS null_city,
+    COUNT(*) FILTER (
+        WHERE city = ''
+    ) AS empty_city
+FROM customers;
 ```
+
+![Missing_Income](images/missing_city.png)
+
+Brakujące wartości zastąpiono w wartością `Unknown`.
 
 Klientów bez informacji o mieście nie usuwano, ponieważ brak lokalizacji nie oznacza, że rekord klienta jest nieprawidłowy. Zastąpienie pustych wartości kategorią `Unknown` pozwala zachować klientów w analizie bez przypisywania im sztucznej lokalizacji.
 
@@ -172,7 +182,8 @@ Przed utworzeniem widoku przyjęto trzy podstawowe warunki walidacyjne: wiek kli
 Na tej podstawie utworzono widok:
 
 ```sql
-CREATE VIEW v_customers_clean AS
+CREATE OR REPLACE 
+VIEW v_customers_clean AS
 SELECT
     customer_id,
     customer_type,
@@ -223,6 +234,8 @@ FROM loans
 WHERE interest_rate <= 0;
 ```
 
+![Interest_rate](images/interest_rate.png)
+
 Wartości te uznano za nieprawidłowe dla analizowanego portfela.
 
 Nie zastępowano ich średnim oprocentowaniem ani stawką przypisaną do produktu, ponieważ nie było wiadomo, jaka wartość powinna występować w konkretnym rekordzie.
@@ -244,6 +257,7 @@ SELECT *
 FROM loans
 WHERE original_amount_pln <= 0;
 ```
+![Original_amount](images/original_amount.png)
 
 Ujemna lub zerowa wartość początkowa kredytu nie opisuje prawidłowej umowy kredytowej.
 
@@ -262,16 +276,11 @@ Przeprowadzono również dodatkowe kontrole:
 ```sql
 SELECT *
 FROM loans
-WHERE original_amount_pln <= 0
-   OR interest_rate <= 0
-   OR term_months <= 0
+WHERE term_months <= 0
    OR maturity_date < origination_date;
 ```
-
 Sprawdzono, czy:
 
-- kwota początkowa kredytu jest dodatnia,
-- oprocentowanie jest dodatnie,
 - okres kredytowania jest większy od zera,
 - data zapadalności nie występuje przed datą udzielenia kredytu.
 
@@ -350,6 +359,8 @@ GROUP BY payment_id
 HAVING COUNT(*) > 1
 ORDER BY duplicate_count DESC;
 ```
+
+![Duplicates](images/duplicates.png)
 
 Pozostawienie duplikatów mogłoby prowadzić do:
 
@@ -845,7 +856,7 @@ Strona może być filtrowana za pomocą:
 - `customer_segment`,
 - `product_name`.
 
-![Report page 1](screens/Strona_1.png)
+![Report page 1](images/Strona_1.png)
 
 #### Najważniejsze obserwacje 💡
 
@@ -881,7 +892,7 @@ Strona może być filtrowana za pomocą:
 - `security_type`,
 - `repayment_type`.
 
-![Report page 2](screens/Strona_2.png)
+![Report page 2](images/Strona_2.png)
 
 #### Najważniejsze obserwacje 💡
 
@@ -934,7 +945,7 @@ Dostępne filtry:
 - `risk_profile`,
 - `Credit Score Band`.
 
-![Report page 3](screens/Strona_3.png)
+![Report page 3](images/Strona_3.png)
 
 #### Najważniejsze obserwacje 💡
 
@@ -989,7 +1000,7 @@ Dostępne filtry:
 - `customer_segment`,
 - `payment_status`.
 
-![Report page 4](screens/Strona_4.png)
+![Report page 4](images/Strona_4.png)
 
 #### Najważniejsze obserwacje 💡
 
@@ -1027,8 +1038,6 @@ Po wskazaniu produktu użytkownik może zobaczyć:
 
 Tooltip umożliwia szybkie porównanie skali ekspozycji, poziomu ryzyka i wyniku produktu bez przechodzenia do osobnej strony raportu.
 
-![Tooltip](screens/Tooltip.png)
-
 ---
 
 ### 6. Drillthrough — szczegółowa analiza produktu 🔎
@@ -1053,7 +1062,6 @@ Tabela zawiera między innymi:
 
 Dzięki temu możliwe jest sprawdzenie, które profile ryzyka w ramach wybranego produktu odpowiadają za największą ekspozycję i najwyższy poziom zaległości.
 
-![Drillthrough](screens/Drillthrough.png)
 
 ## Rekomendacje biznesowe ✅
 

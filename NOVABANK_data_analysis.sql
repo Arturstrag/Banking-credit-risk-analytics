@@ -110,6 +110,16 @@ SELECT
     ) AS missing_risk_profile
 FROM customers;
 
+
+SELECT
+    COUNT(*) AS total_customers,
+    COUNT(*) FILTER (
+        WHERE city IS NULL
+    ) AS null_city,
+    COUNT(*) FILTER (
+        WHERE city = ''
+    ) AS empty_city
+FROM customers;
 -- ============================================================
 
 -- 3. CUSTOMERS - INVALID VALUES
@@ -292,9 +302,7 @@ FROM loans;
 
 SELECT *
 FROM loans
-WHERE original_amount_pln <= 0
-   OR interest_rate <= 0
-   OR term_months <= 0
+WHERE term_months <= 0
    OR maturity_date < origination_date;
 
 -- ============================================================
@@ -795,4 +803,558 @@ SELECT *
 FROM products
 WHERE base_rate < 0
    OR annual_fee_rate < 0;
+
+
+-- ============================================================
+-- NOVABANK
+-- STAGE 2 - CONSISTENT CLEAN DATA LAYER
+-- PostgreSQL
+--
+-- Cel:
+-- - zachowanie tabel RAW bez zmian,
+-- - przygotowanie spójnych widoków CLEAN,
+-- - usunięcie / oznaczenie problemów wykrytych w Etapie 1,
+-- - zapewnienie spójności pomiędzy tabelami.
+--
+-- Kolejność:
+-- 1. v_customers_clean
+-- 2. v_products_clean
+-- 3. v_loans_clean
+-- 4. v_payments_clean
+-- 5. v_loan_monthly_snapshot_clean
+-- ============================================================
+
+
+
+-- ============================================================
+-- 1. CUSTOMERS CLEAN
+--
+-- Zidentyfikowane problemy:
+-- - missing monthly_income_pln -> pozostawiamy jako NULL
+-- - brakujące city zapisane jako pusty tekst -> 'Unknown'
+--
+-- Nie usuwamy klienta tylko dlatego, że nie znamy jego
+-- dochodu lub miasta.
+--
+-- Dodatkowo kontrolujemy podstawowe zakresy biznesowe.
+-- ============================================================
+
+CREATE OR REPLACE VIEW v_customers_clean AS
+SELECT
+    customer_id,
+    customer_type,
+    age,
+    employment_status,
+    -- Brak dochodu pozostaje NULL.
+    -- Nie wykonujemy sztucznej imputacji.
+    monthly_income_pln,
+    -- TRIM usuwa potencjalne spacje.
+    -- NULLIF zamienia pusty tekst na NULL.
+    -- COALESCE zamienia NULL na 'Unknown'.
+    COALESCE(
+        NULLIF(TRIM(city), ''),
+        'Unknown'
+    )::varchar AS city,
+    region,
+    macro_region,
+    credit_score,
+    relationship_start_date,
+    branch_id,
+    risk_profile
+FROM customers
+WHERE age BETWEEN 18 AND 100
+  AND credit_score BETWEEN 300 AND 850
+  AND (
+        monthly_income_pln IS NULL
+        OR monthly_income_pln >= 0
+      );
+
+
+
+-- ============================================================
+-- 2. PRODUCTS CLEAN
+--
+-- W tabeli products nie znaleziono głównych błędów.
+--
+-- Widok służy przede wszystkim do zapewnienia spójnej
+-- warstwy analitycznej.
+-- ============================================================
+
+CREATE OR REPLACE VIEW v_products_clean AS
+SELECT
+    product_id,
+    product_name,
+    customer_segment,
+    security_type,
+    repayment_type,
+    base_rate,
+    annual_fee_rate
+FROM products
+WHERE product_id IS NOT NULL
+  AND product_name IS NOT NULL
+  AND customer_segment IS NOT NULL
+  AND security_type IS NOT NULL
+  AND repayment_type IS NOT NULL
+  AND base_rate >= 0
+  AND annual_fee_rate >= 0;
+
+
+
+-- ============================================================
+-- 3. LOANS CLEAN
+--
+-- Zidentyfikowane problemy:
+-- - original_amount_pln <= 0
+-- - interest_rate <= 0
+--
+-- Nie próbujemy poprawiać tych wartości ręcznie,
+-- ponieważ nie znamy prawidłowej wartości biznesowej.
+--
+-- Rekordy zostają wykluczone z warstwy CLEAN.
+--
+-- Dodatkowo:
+-- - kredyt musi posiadać istniejącego clean customer,
+-- - kredyt musi posiadać istniejący clean product.
+-- ============================================================
+
+CREATE OR REPLACE VIEW v_loans_clean AS
+SELECT
+    l.loan_id,
+    l.customer_id,
+    l.product_id,
+    l.branch_id,
+    l.origination_date,
+    l.maturity_date,
+    l.original_amount_pln,
+    l.interest_rate,
+    l.term_months,
+    l.ltv,
+    l.purpose,
+    l.status
+FROM loans l
+INNER JOIN v_customers_clean c
+    ON l.customer_id = c.customer_id
+INNER JOIN v_products_clean p
+    ON l.product_id = p.product_id
+WHERE l.original_amount_pln > 0
+  AND l.interest_rate > 0
+  AND l.term_months > 0
+  AND l.maturity_date >= l.origination_date;
+
+
+
+-- ============================================================
+-- 4. PAYMENTS CLEAN
+--
+-- Zidentyfikowany problem:
+-- - duplicated payment_id / duplicate payment records
+--
+-- ROW_NUMBER przypisuje kolejność rekordom posiadającym
+-- ten sam payment_id.
+--
+-- Zachowujemy tylko rn = 1.
+--
+-- Następnie INNER JOIN do v_loans_clean sprawia,
+-- że płatności dotyczące kredytów wykluczonych z clean layer
+-- również nie trafiają do clean payments.
+-- ============================================================
+
+CREATE OR REPLACE VIEW v_payments_clean AS
+WITH ranked_payments AS (
+    SELECT
+        p.payment_id,
+        p.loan_id,
+        p.customer_id,
+        p.due_date,
+        p.payment_date,
+        p.due_amount_pln,
+        p.paid_amount_pln,
+        p.days_past_due,
+        p.payment_status,
+        ROW_NUMBER() OVER (
+            PARTITION BY p.payment_id
+            ORDER BY
+                p.payment_date,
+                p.loan_id,
+                p.customer_id
+        ) AS rn
+    FROM payments p
+)
+SELECT
+    rp.payment_id,
+    rp.loan_id,
+    rp.customer_id,
+    rp.due_date,
+    rp.payment_date,
+    rp.due_amount_pln,
+    rp.paid_amount_pln,
+    rp.days_past_due,
+    rp.payment_status
+FROM ranked_payments rp
+INNER JOIN v_loans_clean l
+    ON rp.loan_id = l.loan_id
+WHERE rp.rn = 1
+  AND rp.due_amount_pln >= 0
+  AND rp.paid_amount_pln >= 0
+  AND rp.days_past_due >= 0;
+
+
+
+-- ============================================================
+-- 5. LOAN MONTHLY SNAPSHOT CLEAN
+--
+-- Snapshot jest główną tabelą analityczną projektu.
+--
+-- Nie traktujemy ujemnego monthly_interest_income_pln
+-- jako osobnego problemu do naprawienia tutaj.
+--
+-- Wcześniejsza analiza wykazała, że wartości te były
+-- konsekwencją błędnego interest_rate w loans.
+--
+-- Dlatego eliminujemy problem u źródła:
+-- snapshot pozostaje tylko wtedy, gdy loan_id występuje
+-- w v_loans_clean.
+-- ============================================================
+
+CREATE OR REPLACE VIEW v_loan_monthly_snapshot_clean AS
+SELECT
+    s.snapshot_month,
+    s.loan_id,
+    s.customer_id,
+    s.product_id,
+    s.branch_id,
+    s.loan_age_months,
+    s.outstanding_balance_pln,
+    s.days_past_due,
+    s.loan_status_month,
+    s.monthly_interest_income_pln,
+    s.estimated_credit_loss_pln
+FROM loan_monthly_snapshot s
+INNER JOIN v_loans_clean l
+    ON s.loan_id = l.loan_id
+WHERE s.loan_age_months >= 0
+  AND s.outstanding_balance_pln >= 0
+  AND s.days_past_due >= 0
+  AND s.estimated_credit_loss_pln >= 0;
+
+
+
+-- ============================================================
+-- 6. RAW VS CLEAN ROW COUNT
+--
+-- Porównanie liczby rekordów przed i po czyszczeniu.
+-- ============================================================
+
+SELECT
+    'customers' AS dataset,
+    (SELECT COUNT(*) FROM customers) AS raw_rows,
+    (SELECT COUNT(*) FROM v_customers_clean) AS clean_rows,
+    (SELECT COUNT(*) FROM customers)
+        - (SELECT COUNT(*) FROM v_customers_clean) AS excluded_rows
+UNION ALL
+SELECT
+    'products',
+    (SELECT COUNT(*) FROM products),
+    (SELECT COUNT(*) FROM v_products_clean),
+    (SELECT COUNT(*) FROM products)
+        - (SELECT COUNT(*) FROM v_products_clean)
+UNION ALL
+SELECT
+    'loans',
+    (SELECT COUNT(*) FROM loans),
+    (SELECT COUNT(*) FROM v_loans_clean),
+    (SELECT COUNT(*) FROM loans)
+        - (SELECT COUNT(*) FROM v_loans_clean)
+UNION ALL
+SELECT
+    'payments',
+    (SELECT COUNT(*) FROM payments),
+    (SELECT COUNT(*) FROM v_payments_clean),
+    (SELECT COUNT(*) FROM payments)
+        - (SELECT COUNT(*) FROM v_payments_clean)
+UNION ALL
+SELECT
+    'loan_monthly_snapshot',
+    (SELECT COUNT(*) FROM loan_monthly_snapshot),
+    (SELECT COUNT(*) FROM v_loan_monthly_snapshot_clean),
+    (SELECT COUNT(*) FROM loan_monthly_snapshot)
+        - (SELECT COUNT(*) FROM v_loan_monthly_snapshot_clean)
+ORDER BY dataset;
+
+
+
+-- ============================================================
+-- 7. CUSTOMERS VALIDATION
+--
+-- Oczekiwany wynik:
+-- missing_city = 0
+-- invalid_age = 0
+-- invalid_credit_score = 0
+-- negative_income = 0
+--
+-- missing_income może pozostać > 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) FILTER (
+        WHERE city IS NULL
+           OR TRIM(city) = ''
+    ) AS missing_city,
+
+    COUNT(*) FILTER (
+        WHERE city = 'Unknown'
+    ) AS unknown_city,
+
+    COUNT(*) FILTER (
+        WHERE monthly_income_pln IS NULL
+    ) AS missing_income,
+
+    COUNT(*) FILTER (
+        WHERE age < 18 OR age > 100
+    ) AS invalid_age,
+
+    COUNT(*) FILTER (
+        WHERE credit_score < 300 OR credit_score > 850
+    ) AS invalid_credit_score,
+
+    COUNT(*) FILTER (
+        WHERE monthly_income_pln < 0
+    ) AS negative_income
+
+FROM v_customers_clean;
+
+
+
+-- ============================================================
+-- 8. LOANS VALIDATION
+--
+-- Wszystkie wartości powinny wynosić 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) FILTER (
+        WHERE original_amount_pln <= 0
+    ) AS invalid_amount,
+
+    COUNT(*) FILTER (
+        WHERE interest_rate <= 0
+    ) AS invalid_interest_rate,
+
+    COUNT(*) FILTER (
+        WHERE term_months <= 0
+    ) AS invalid_term,
+
+    COUNT(*) FILTER (
+        WHERE maturity_date < origination_date
+    ) AS invalid_dates
+
+FROM v_loans_clean;
+
+
+
+-- ============================================================
+-- 9. DUPLICATE PAYMENTS VALIDATION
+--
+-- Powinno zwrócić 0 rekordów.
+-- ============================================================
+
+SELECT
+    payment_id,
+    COUNT(*) AS duplicate_count
+
+FROM v_payments_clean
+
+GROUP BY payment_id
+
+HAVING COUNT(*) > 1;
+
+
+
+-- ============================================================
+-- 10. PAYMENTS VS CLEAN LOANS
+--
+-- Powinno zwrócić 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) AS payments_without_clean_loan
+
+FROM v_payments_clean p
+
+LEFT JOIN v_loans_clean l
+    ON p.loan_id = l.loan_id
+
+WHERE l.loan_id IS NULL;
+
+
+
+-- ============================================================
+-- 11. SNAPSHOT VS CLEAN LOANS
+--
+-- Powinno zwrócić 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) AS snapshots_without_clean_loan
+
+FROM v_loan_monthly_snapshot_clean s
+
+LEFT JOIN v_loans_clean l
+    ON s.loan_id = l.loan_id
+
+WHERE l.loan_id IS NULL;
+
+
+
+-- ============================================================
+-- 12. LOANS VS CLEAN CUSTOMERS
+--
+-- Powinno zwrócić 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) AS loans_without_clean_customer
+
+FROM v_loans_clean l
+
+LEFT JOIN v_customers_clean c
+    ON l.customer_id = c.customer_id
+
+WHERE c.customer_id IS NULL;
+
+
+
+-- ============================================================
+-- 13. LOANS VS CLEAN PRODUCTS
+--
+-- Powinno zwrócić 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) AS loans_without_clean_product
+
+FROM v_loans_clean l
+
+LEFT JOIN v_products_clean p
+    ON l.product_id = p.product_id
+
+WHERE p.product_id IS NULL;
+
+
+
+-- ============================================================
+-- 14. CUSTOMER CONSISTENCY IN PAYMENTS
+--
+-- Sprawdzenie, czy customer_id płatności zgadza się
+-- z customer_id przypisanym do kredytu.
+--
+-- Oczekiwany wynik: 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) AS inconsistent_payment_customer
+
+FROM v_payments_clean p
+
+JOIN v_loans_clean l
+    ON p.loan_id = l.loan_id
+
+WHERE p.customer_id <> l.customer_id;
+
+
+
+-- ============================================================
+-- 15. SNAPSHOT CUSTOMER CONSISTENCY
+--
+-- customer_id w snapshot powinien być zgodny
+-- z właścicielem kredytu.
+--
+-- Oczekiwany wynik: 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) AS inconsistent_snapshot_customer
+FROM v_loan_monthly_snapshot_clean s
+JOIN v_loans_clean l
+    ON s.loan_id = l.loan_id
+WHERE s.customer_id <> l.customer_id;
+
+
+
+-- ============================================================
+-- 16. SNAPSHOT PRODUCT CONSISTENCY
+--
+-- product_id w snapshot powinien być zgodny
+-- z product_id kredytu.
+--
+-- Oczekiwany wynik: 0.
+-- ============================================================
+
+SELECT
+    COUNT(*) AS inconsistent_snapshot_product
+FROM v_loan_monthly_snapshot_clean s
+JOIN v_loans_clean l
+    ON s.loan_id = l.loan_id
+WHERE s.product_id <> l.product_id;
+
+
+
+-- ============================================================
+-- 17. DUPLICATE LOAN-MONTH VALIDATION
+--
+-- Jeden kredyt powinien posiadać jeden snapshot
+-- w danym miesiącu.
+--
+-- Powinno zwrócić 0 rekordów.
+-- ============================================================
+
+SELECT
+    loan_id,
+    snapshot_month,
+    COUNT(*) AS duplicate_count
+FROM v_loan_monthly_snapshot_clean
+GROUP BY
+    loan_id,
+    snapshot_month
+HAVING COUNT(*) > 1;
+
+
+
+-- ============================================================
+-- 18. FINAL CLEAN LAYER VALIDATION
+--
+-- Cztery główne relacje powinny zwrócić po 0.
+-- ============================================================
+
+SELECT
+    'Loans without customer' AS check_name,
+    COUNT(*) AS issue_count
+FROM v_loans_clean l
+LEFT JOIN v_customers_clean c
+    ON l.customer_id = c.customer_id
+WHERE c.customer_id IS NULL
+UNION ALL
+SELECT
+    'Loans without product',
+    COUNT(*)
+FROM v_loans_clean l
+LEFT JOIN v_products_clean p
+    ON l.product_id = p.product_id
+WHERE p.product_id IS NULL
+UNION ALL
+SELECT
+    'Payments without clean loan',
+    COUNT(*)
+FROM v_payments_clean p
+LEFT JOIN v_loans_clean l
+    ON p.loan_id = l.loan_id
+WHERE l.loan_id IS NULL
+UNION ALL
+SELECT
+    'Snapshots without clean loan',
+    COUNT(*)
+FROM v_loan_monthly_snapshot_clean s
+LEFT JOIN v_loans_clean l
+    ON s.loan_id = l.loan_id
+WHERE l.loan_id IS NULL;
 
