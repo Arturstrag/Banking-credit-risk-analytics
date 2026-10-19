@@ -302,7 +302,9 @@ FROM loans;
 
 SELECT *
 FROM loans
-WHERE term_months <= 0
+WHERE original_amount_pln <= 0
+   OR interest_rate <= 0
+   OR term_months <= 0
    OR maturity_date < origination_date;
 
 -- ============================================================
