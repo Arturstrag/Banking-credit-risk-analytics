@@ -1,72 +1,93 @@
-# Banking-credit-risk-analytics
+# Banking Credit Risk Analytics
 
 
+<a id="project-overview"></a>
+## 🏦 Project overview
 
-## Opis projektu
+This project analyzes the loan portfolio of **NovaBank**, a simulated bank operating in the Polish retail banking market and serving small and medium-sized enterprises (SMEs).
 
-Projekt koncentruje się na analizie portfela kredytowego symulowanego banku **NovaBank**, działającego na polskim rynku bankowości detalicznej oraz obsługującego małe i średnie przedsiębiorstwa (MŚP).
+The dataset contains information about customers, loans, monthly loan performance, payment history, and lending products. The analysis follows a realistic banking workflow: data quality checks and preparation with SQL, followed by business analysis and an interactive report in Power BI.
 
-Zbiór danych zawiera informacje o klientach, kredytach, miesięcznych wynikach kredytów, historii spłat oraz produktach kredytowych. Analiza odzwierciedla realistyczny proces analityczny w bankowości: rozpoczyna się od weryfikacji jakości danych i ich przygotowania za pomocą SQL, a następnie obejmuje analizę biznesową i utworzenie dashboardu w programie Excel.
+The main areas of analysis are portfolio size and composition, delinquency trends, credit risk by product and customer segment, payment behavior, and risk-adjusted profitability.
 
-Główne obszary analizy to wielkość i struktura portfela, trendy dotyczące zaległości w spłacie, ryzyko kredytowe według produktu i segmentu klientów, zachowania płatnicze oraz rentowność skorygowana o ryzyko.
 
-## Cel biznesowy
+## Table of contents
 
-Głównym celem projektu jest ocena jakości i profilu ryzyka portfela kredytowego NovaBanku oraz wskazanie obszarów, które w największym stopniu przyczyniają się do pogorszenia jego jakości.
+- [Business objective](#business-objective)
+- [Tools](#tools)
+- [Data structure](#data-structure)
+- [Data quality and preparation](#data-quality-and-preparation)
+  - [Customers](#customers)
+  - [Loans](#loans)
+  - [Payments](#payments)
+  - [Monthly loan snapshots](#monthly-loan-snapshots)
+  - [Products and relationships](#products-and-relationships)
+- [Data model](#data-model)
+- [DAX analysis](#dax-analysis)
+- [Report structure and findings](#report-structure-and-findings)
+- [Business recommendations](#business-recommendations)
+- [Further analysis](#further-analysis)
+- [Summary](#summary)
 
-Analiza ma odpowiedzieć na następujące pytania biznesowe:
 
-- Jak zmienia się wartość portfela kredytowego w czasie?
-- Czy rośnie udział kredytów z opóźnieniem w spłacie wynoszącym co najmniej 30 lub 90 dni (DPD)?
-- Które produkty kredytowe wiążą się z najwyższym ryzykiem?
-- Czym różni się ryzyko kredytowe klientów detalicznych i klientów z segmentu MŚP?
-- Czy kredyty zabezpieczone są mniej ryzykowne niż kredyty niezabezpieczone?
-- Jak rodzaj spłaty, na przykład ratalna (Installment) lub odnawialna (Revolving), wpływa na ryzyko portfela?
-- Które profile ryzyka klientów i przedziały scoringu kredytowego wiążą się z większymi zaległościami?
-- Jak skutecznie klienci spłacają swoje zobowiązania?
-- Czy wyższe ryzyko kredytowe jest rekompensowane odpowiednio wysokimi przychodami odsetkowymi?
-- Które produkty generują najwyższy dochód skorygowany o ryzyko?
+<a id="business-objective"></a>
+## 🎯 Business objective
 
-Celem końcowym jest przedstawienie przejrzystego obrazu wyników portfela oraz wsparcie kierownictwa w identyfikacji segmentów wymagających dokładniejszego monitorowania lub zmian w polityce kredytowej.
+The primary objective is to assess the quality and risk profile of NovaBank's loan portfolio and identify the areas contributing most to its deterioration.
 
----
+The analysis addresses the following business questions:
 
-## **Tools:**
-- **Microsoft Power BI** — used to build the interactive report, visualizations, filters, and drillthrough pages.
-- **Power Query** — used to clean, transform, and prepare the source data for the analytical model.
-- **DAX** — used to create measures and calculations for sales, margin, growth, and other business metrics.
+- How does the value of the loan portfolio change over time?
+- Is the share of loans at least 30 or 90 days past due (DPD) increasing?
+- Which lending products carry the highest risk?
+- How does credit risk differ between Retail and SME customers?
+- Are secured loans less risky than unsecured loans?
+- How does the repayment type (for example, Installment or Revolving) affect portfolio risk?
+- Which customer risk profiles and credit score bands are associated with higher delinquency?
+- How effectively do customers repay their obligations?
+- Is higher credit risk offset by sufficient interest income?
+- Which products generate the highest risk-adjusted income?
 
-## Struktura danych
+The goal is to provide a clear view of portfolio performance and help management identify segments that may require closer monitoring or changes to credit policy.
 
-Podstawą analizy jest pięć powiązanych ze sobą tabel.
+<a id="tools"></a>
+## 🛠️ Tools
 
-| Tabela | Opis | Liczba rekordów |
+- **SQL (PostgreSQL-compatible syntax)** — used to profile source tables, validate data, check relationships, and create cleaned views for analysis.
+- **Microsoft Power BI Desktop** — used to build the relational model and interactive report, including visuals, filters, tooltips, and drillthrough pages.
+- **DAX** — used to define the portfolio, delinquency, income, loss, and payment measures displayed in the report.
+
+<a id="data-structure"></a>
+## 🗂️ Data structure
+
+The analysis is based on five related tables:
+
+| Table | Description | Records |
 |---|---|---:|
-| `customers` | Informacje o klientach, w tym segment klienta, wiek, status zatrudnienia, miesięczny dochód, lokalizacja, scoring kredytowy i profil ryzyka. | 50 000 |
-| `loans` | Informacje o umowach kredytowych, w tym kwota kredytu, oprocentowanie, okres, data udzielenia, data zapadalności, LTV, cel i status kredytu. | 72 000 |
-| `loan_monthly_snapshot` | Miesięczny obraz każdego aktywnego kredytu, obejmujący saldo do spłaty, liczbę dni opóźnienia (Days Past Due), miesięczny status kredytu, przychody odsetkowe i szacowaną stratę kredytową. | 1 265 930 |
-| `payments` | Historia spłat, w tym termin płatności, data płatności, kwota należna, kwota zapłacona, status płatności i liczba dni opóźnienia. | 480 300 |
-| `products` | Słownik produktów kredytowych zawierający nazwę produktu, segment klienta, rodzaj zabezpieczenia, rodzaj spłaty, stopę bazową i roczną stawkę opłat. | 8 |
-| **Łącznie** |  | **1 868 238** |
+| `customers` | Customer information, including customer segment, age, employment status, monthly income, location, credit score, and risk profile. | 50,000 |
+| `loans` | Loan agreements, including loan amount, interest rate, term, origination and maturity dates, LTV, purpose, and loan status. | 72,000 |
+| `loan_monthly_snapshot` | Monthly records for each loan, including outstanding balance, days past due, monthly loan status, interest income, and estimated credit loss. | 1,265,930 |
+| `payments` | Payment history, including due date, payment date, amount due, amount paid, payment status, and days past due. | 480,300 |
+| `products` | Lending product reference data, including product name, customer segment, security type, repayment type, base rate, and annual fee rate. | 8 |
+| **Total** |  | **1,868,238** |
 
-Główną tabelą analityczną jest `loan_monthly_snapshot`, w której każdy wiersz przedstawia status konkretnego kredytu w danym miesiącu.
+The primary analytical table is `loan_monthly_snapshot`, where each row represents the status of a specific loan in a given month.
 
-Taka struktura pozwala analizować portfel w czasie i obliczać kluczowe wskaźniki, takie jak:
+This structure supports time-based portfolio analysis and the calculation of key metrics such as:
 
-- Saldo do spłaty (Outstanding Balance)
-- Aktywne kredyty (Active Loans)
-- Wskaźnik DPD 30+
-- Wskaźnik DPD 90+
-- Przychody odsetkowe (Interest Income)
-- Szacowana strata kredytowa (Estimated Credit Loss)
-- Dochód skorygowany o ryzyko (Risk Adjusted Income)
-- Wskaźnik ściągalności (Collection Ratio)
+- Outstanding Balance
+- Active Loans
+- DPD30+ Rate
+- DPD90+ Rate
+- Interest Income
+- Estimated Credit Loss
+- Risk Adjusted Income
+- Collection Ratio
 
+<a id="data-quality-and-preparation"></a>
+## 🧹 Data quality and preparation
 
-
-## 🧹 Jakość i przygotowanie danych
-
-Przed rozpoczęciem analizy portfela kredytowego sprawdzono jakość danych we wszystkich pięciu głównych tabelach:
+Before analyzing the loan portfolio, data quality was checked across all five core tables:
 
 - `customers`
 - `loans`
@@ -74,40 +95,20 @@ Przed rozpoczęciem analizy portfela kredytowego sprawdzono jakość danych we w
 - `payments`
 - `products`
 
-W ramach kontroli sprawdzono między innymi:
+The checks covered missing values, duplicates, invalid numeric values, logical inconsistencies, date validity, consistency of text categories, referential integrity, and relationships between customers, loans, payments, and products.
 
-- brakujące wartości,
-- duplikaty,
-- nieprawidłowe wartości liczbowe,
-- niespójności logiczne,
-- poprawność dat,
-- spójność kategorii tekstowych,
-- integralność referencyjną,
-- powiązania pomiędzy klientami, kredytami, płatnościami i produktami.
+The complete set of SQL checks is available in [`NOVABANK_data_analysis.sql`](NOVABANK_data_analysis.sql).
 
-Najważniejsze problemy oraz wybrane fragmenty zapytań SQL pokazujące sposób ich rozwiązania przedstawiono poniżej.
+After the checks, five cleaned SQL views were created for analysis. The source tables were left unchanged to preserve the original data and allow comparison with the cleaned data.
 
-Pełny zestaw zapytań kontrolnych znajduje się w pliku:
+<a id="customers"></a>
+### 👤 Customers
 
-`NOVABANK_data_analysis.sql`
+The `customers` table was checked for missing values, duplicate customer IDs, valid ages, income and credit score ranges, and consistent categories such as `customer_type`, `employment_status`, and `risk_profile`. The main issues were missing `monthly_income_pln` and `city` values.
 
-Po zakończeniu kontroli utworzono pięć oczyszczonych widoków SQL przeznaczonych do dalszej analizy. Oryginalne tabele pozostawiono bez zmian, dzięki czemu zachowano dane źródłowe i możliwość porównania ich z danymi po zastosowaniu reguł czyszczenia.
+#### Missing `monthly_income_pln`
 
----
-
-## Etapy przygotowania danych
-
-### 👤 Tabela `customers`
-
-Tabela `customers` została sprawdzona pod kątem brakujących wartości, duplikatów identyfikatorów klientów, poprawności wieku, poziomu dochodów, scoringu kredytowego oraz spójności kategorii takich jak `customer_type`, `employment_status` i `risk_profile`.
-
-Najważniejsze problemy dotyczyły brakujących wartości w kolumnach `monthly_income_pln` i `city`.
-
----
-
-#### 1. Brakujące wartości `monthly_income_pln`
-
-W kolumnie `monthly_income_pln` brakowało wartości dla **140 klientów**.
+Income was missing for **140 customers**:
 
 ```sql
 SELECT
@@ -118,22 +119,15 @@ SELECT
 FROM customers;
 ```
 
+![Missing monthly income](images/missing_monthly_income.png)
 
-![Missing_Income](images/missing_monthly_income.png)
+Missing income was not replaced with the mean or median because there was not enough information to reliably infer a customer's actual income. Values were left as `NULL`, preserving the customer records without introducing estimates that could distort risk analysis or segmentation.
 
-Brakujących dochodów nie zastępowano średnią ani medianą, ponieważ nie było wystarczających informacji pozwalających wiarygodnie określić rzeczywisty dochód klienta. Wartości pozostawiono jako `NULL`.
+**Potential improvement:** Require income validation in the source system for products where income is necessary to assess creditworthiness.
 
-Dzięki temu rekord klienta nadal może być wykorzystywany w analizie, a jednocześnie do danych nie są wprowadzane sztucznie oszacowane wartości, które mogłyby zniekształcić analizę ryzyka lub segmentację klientów.
+#### Missing city
 
-**Potencjalne usprawnienie:** W systemie źródłowym warto wprowadzić obowiązkową walidację dochodu dla produktów, w których informacja ta jest wymagana do oceny zdolności kredytowej.
-
----
-
-#### 2. Brakujące informacje o mieście
-
-W **85 rekordach** brakowało informacji o mieście.
-
-Brakujące wartości były zapisane jako pusty tekst, a nie jako `NULL`.
+City information was missing in **85 records**. These values were stored as empty strings rather than `NULL`.
 
 ```sql
 SELECT
@@ -147,19 +141,15 @@ SELECT
 FROM customers;
 ```
 
-![Missing_Income](images/missing_city.png)
+![Missing city](images/missing_city.png)
 
-Brakujące wartości zastąpiono w wartością `Unknown`.
+Empty values were replaced with `Unknown`. Customers were not removed because a missing location does not make a customer record invalid. This approach preserves the records without assigning an artificial location.
 
-Klientów bez informacji o mieście nie usuwano, ponieważ brak lokalizacji nie oznacza, że rekord klienta jest nieprawidłowy. Zastąpienie pustych wartości kategorią `Unknown` pozwala zachować klientów w analizie bez przypisywania im sztucznej lokalizacji.
+**Potential improvement:** Validate the city during customer registration or require address selection from a controlled list of locations.
 
-**Potencjalne usprawnienie:** Walidować pole miasta w momencie rejestracji klienta lub wyboru adresu z kontrolowanej listy lokalizacji.
+#### Business-range validation
 
----
-
-#### 3. Weryfikacja zakresów biznesowych
-
-Sprawdzono również, czy podstawowe atrybuty klientów mieszczą się w logicznych zakresach.
+The following customer attributes were checked for plausible values:
 
 ```sql
 SELECT *
@@ -171,19 +161,12 @@ WHERE age < 18
    OR monthly_income_pln < 0;
 ```
 
-Kontrola obejmowała:
+The project applies these validation rules: age must be between 18 and 100; `credit_score` must be between 300 and 850; and monthly income may be unknown (`NULL`), but must not be negative when present.
 
-- wiek klienta,
-- credit score,
-- miesięczny dochód.
-
-Przed utworzeniem widoku przyjęto trzy podstawowe warunki walidacyjne: wiek klienta powinien mieścić się w zakresie od 18 do 100 lat, `credit_score` w zakresie 300–850 przyjętym w projekcie jako prawidłowy zakres scoringu kredytowego, a miesięczny dochód może pozostać nieznany (`NULL`), lecz jeśli jest dostępny, nie powinien być ujemny.
-
-Na tej podstawie utworzono widok:
+The cleaned view applies those rules and normalizes blank city values:
 
 ```sql
-CREATE OR REPLACE 
-VIEW v_customers_clean AS
+CREATE OR REPLACE VIEW v_customers_clean AS
 SELECT
     customer_id,
     customer_type,
@@ -209,24 +192,18 @@ WHERE age BETWEEN 18 AND 100
   );
 ```
 
-Po zastosowaniu reguł w oczyszczonych widokach SQL pozostało wszystkich **50 000 klientów**.
+All **50,000 customers** remained in the cleaned view.
 
----
+<a id="loans"></a>
+### 💳 Loans
 
-### 💳 Tabela `loans`
+The `loans` table was checked for missing values, unique `loan_id` values, valid loan amounts and interest rates, loan terms, valid dates, and links to customers and products.
 
-Tabela `loans` została sprawdzona pod kątem brakujących wartości, unikalności `loan_id`, wysokości kwoty kredytu, oprocentowania, okresu kredytowania, poprawności dat oraz powiązań z klientami i produktami.
+The main issues were **45 loans with invalid interest rates** and **35 loans with invalid original amounts**.
 
-Najważniejsze problemy dotyczyły:
+#### Invalid interest rates
 
-- **45 kredytów z nieprawidłowym oprocentowaniem**,
-- **35 kredytów z nieprawidłową początkową kwotą kredytu**.
-
----
-
-#### 1. Nieprawidłowe oprocentowanie
-
-W 45 rekordach znaleziono wartości `interest_rate <= 0`.
+The `interest_rate` was less than or equal to zero in 45 records:
 
 ```sql
 SELECT *
@@ -234,44 +211,31 @@ FROM loans
 WHERE interest_rate <= 0;
 ```
 
-![Interest_rate](images/interest_rate.png)
+![Invalid interest rates](images/interest_rate.png)
 
-Wartości te uznano za nieprawidłowe dla analizowanego portfela.
+These values were considered invalid for the portfolio. They were not replaced with an average rate or a product rate because the correct value for an individual loan could not be determined. The affected loans were excluded from `v_loans_clean`, avoiding fabricated rates that could distort interest income and portfolio profitability.
 
-Nie zastępowano ich średnim oprocentowaniem ani stawką przypisaną do produktu, ponieważ nie było wiadomo, jaka wartość powinna występować w konkretnym rekordzie.
+**Potential improvement:** Validate interest rates when loan agreements are entered and reject values less than or equal to zero.
 
-Kredyty te nie zostały uwzględnione w widoku `v_loans_clean`, który służy jako źródło danych do dalszej analizy.
+#### Invalid `original_amount_pln`
 
-Takie podejście pozwala uniknąć wprowadzania sztucznie oszacowanych stóp procentowych, które później wpływałyby na przychody odsetkowe i rentowność portfela.
-
-**Potencjalne usprawnienie:** Walidować oprocentowanie już w momencie zapisu umowy kredytowej i blokować wartości mniejsze lub równe zero.
-
----
-
-#### 2. Nieprawidłowe wartości `original_amount_pln`
-
-W **35 rekordach** występowała wartość `original_amount_pln <= 0`.
+In **35 records**, `original_amount_pln <= 0`:
 
 ```sql
 SELECT *
 FROM loans
 WHERE original_amount_pln <= 0;
 ```
-![Original_amount](images/original_amount.png)
 
-Ujemna lub zerowa wartość początkowa kredytu nie opisuje prawidłowej umowy kredytowej.
+![Invalid original loan amounts](images/original_amount.png)
 
-Rekordów nie poprawiano automatycznie, ponieważ nie było możliwości jednoznacznego odtworzenia prawidłowej kwoty.
+A zero or negative original loan amount does not represent a valid loan agreement. These records were not automatically corrected because the correct amount could not be reliably reconstructed. They were excluded from `v_loans_clean`.
 
-Rekordy te nie zostały uwzględnione w widoku `v_loans_clean`.
+**Potential improvement:** Add a source-system constraint that prevents saving a loan with an amount less than or equal to zero.
 
-**Potencjalne usprawnienie:** Wprowadzić ograniczenie w systemie źródłowym uniemożliwiające zapis kredytu z kwotą mniejszą lub równą zero.
+#### Loan consistency and cleaned view
 
----
-
-#### 3. Kontrola spójności kredytów
-
-Przeprowadzono również dodatkowe kontrole:
+Additional checks covered the loan term and date order:
 
 ```sql
 SELECT *
@@ -279,12 +243,8 @@ FROM loans
 WHERE term_months <= 0
    OR maturity_date < origination_date;
 ```
-Sprawdzono, czy:
 
-- okres kredytowania jest większy od zera,
-- data zapadalności nie występuje przed datą udzielenia kredytu.
-
-Na tej podstawie utworzono widok:
+The term must be greater than zero, and the maturity date must not precede the origination date. The cleaned view also ensures each loan is linked to a valid customer and product:
 
 ```sql
 CREATE OR REPLACE VIEW v_loans_clean AS
@@ -312,43 +272,22 @@ WHERE l.original_amount_pln > 0
   AND l.maturity_date >= l.origination_date;
 ```
 
-W zbiorze danych pozostają tylko kredyty posiadające poprawnego klienta i produkt.
+The number of loans decreased from **72,000 to 71,920**; **80 records** were excluded.
 
-Liczba kredytów zmniejszyła się z:
+#### Missing LTV
 
-**72 000 do 71 920**
+Missing `ltv` values occurred only for `Unsecured` products, while `Secured` loans had an LTV value. Missing LTV was therefore treated as logically not applicable rather than as a data quality issue. Values were left unchanged.
 
-Łącznie wykluczono **80 rekordów**.
+**Potential improvement:** Document in the data model that `NULL` LTV means “not applicable” for unsecured products.
 
----
+<a id="payments"></a>
+### 💰 Payments
 
-#### 4. Brakujące wartości LTV
+The `payments` table was checked for missing values, duplicate `payment_id` values and full-row duplicates, negative amounts and DPD values, valid dates, and relationships to loans and customers. The main issue was **300 duplicated payment records**.
 
-Sprawdzono również brakujące wartości `ltv`.
+#### Duplicate payment IDs
 
-Analiza wykazała, że brakujące LTV występowało wyłącznie dla produktów typu `Unsecured`, natomiast kredyty `Secured` posiadały wartość tego wskaźnika.
-
-Brak LTV nie został więc potraktowany jako błąd jakości danych.
-
-Dla kredytu niezabezpieczonego nie istnieje wartość zabezpieczenia, dlatego brak wskaźnika Loan-to-Value jest logiczny.
-
-Wartości pozostawiono bez zmian.
-
-**Potencjalne usprawnienie:** Dokumentować w modelu danych, że `NULL` w LTV oznacza „not applicable” dla produktów niezabezpieczonych.
-
----
-
-### 💰 Tabela `payments`
-
-Tabela `payments` została sprawdzona pod kątem brakujących wartości, duplikatów `payment_id`, pełnych duplikatów rekordów, ujemnych kwot, ujemnych wartości DPD, poprawności dat oraz powiązań z kredytami i klientami.
-
-Najważniejszym problemem było **300 zduplikowanych rekordów płatności**.
-
----
-
-#### 1. Zduplikowane identyfikatory płatności
-
-Duplikaty zostały wykryte za pomocą:
+Duplicates were identified with:
 
 ```sql
 SELECT
@@ -360,20 +299,13 @@ HAVING COUNT(*) > 1
 ORDER BY duplicate_count DESC;
 ```
 
-![Duplicates](images/duplicates.png)
+![Duplicate payments](images/duplicates.png)
 
-Pozostawienie duplikatów mogłoby prowadzić do:
+Keeping duplicate records could inflate total payments and payment counts, distort the Collection Ratio, and lead to an incorrect assessment of customer payment behavior.
 
-- zawyżenia całkowitej kwoty płatności,
-- zawyżenia liczby płatności,
-- zniekształcenia Collection Ratio,
-- błędnej oceny zachowania płatniczego klientów.
+#### Checking full-row duplicates
 
----
-
-#### 2. Weryfikacja pełnych duplikatów
-
-Dodatkowo sprawdzono, czy rekordy z powielonym `payment_id` są identycznymi kopiami.
+Since a repeated ID does not always mean that every field is duplicated, all record values were compared before removing duplicates:
 
 ```sql
 SELECT
@@ -402,15 +334,9 @@ HAVING COUNT(*) > 1
 ORDER BY duplicate_count DESC;
 ```
 
-Samo powtórzenie identyfikatora nie zawsze oznacza pełny duplikat, dlatego przed usunięciem danych sprawdzono komplet wartości w rekordzie.
+#### Removing duplicates
 
----
-
-#### 3. Usunięcie duplikatów
-
-W obrębie każdego `payment_id` zachowano tylko pierwszy rekord.
-
-Pełny widok przygotowany do dalszej analizy:
+Only the first record for each `payment_id` was retained. The view also filters invalid amounts and DPD values and excludes payments associated with loans removed from `v_loans_clean`:
 
 ```sql
 CREATE OR REPLACE VIEW v_payments_clean AS
@@ -453,30 +379,18 @@ WHERE rp.rn = 1
   AND rp.days_past_due >= 0;
 ```
 
-Dodatkowe połączenie z `v_loans_clean` zapewnia, że płatności dotyczące wcześniej wykluczonych kredytów również nie są wykorzystywane w analizie.
+The record count decreased from **480,300 to 479,486**; **814 records** were excluded. This is more than the number of duplicates alone because some payments were associated with loans excluded from `v_loans_clean`.
 
-Liczba rekordów zmniejszyła się z:
+**Potential improvement:** Use a unique payment transaction ID and enforce its uniqueness in the source system.
 
-**480 300 do 479 486**
+<a id="monthly-loan-snapshots"></a>
+### 📅 Monthly loan snapshots
 
-Łącznie wykluczono **814 rekordów**.
+The `loan_monthly_snapshot` table was checked for duplicate loan-month observations and invalid `loan_age_months`, `outstanding_balance_pln`, `days_past_due`, `monthly_interest_income_pln`, and `estimated_credit_loss_pln` values.
 
-Różnica jest większa niż liczba samych duplikatów, ponieważ część płatności była powiązana z kredytami wcześniej wykluczonymi z widoku `v_loans_clean`.
+#### Duplicate loan-month observations
 
-**Potencjalne usprawnienie:** Wprowadzić jednoznaczny identyfikator transakcji płatniczej oraz unikalne ograniczenie na poziomie systemu źródłowego.
-
----
-
-### 📅 Tabela `loan_monthly_snapshot`
-
-Tabela `loan_monthly_snapshot` została sprawdzona pod kątem duplikatów, nieprawidłowych wartości `loan_age_months`, `outstanding_balance_pln`, `days_past_due`, `monthly_interest_income_pln`, 
-`estimated_credit_loss_pln`,    
-
----
-
-#### 1. Zduplikowane obserwacje kredytu i miesiąca
-
-Każdy kredyt powinien posiadać maksymalnie jeden rekord dla danego miesiąca.
+Each loan should have no more than one record for a given month:
 
 ```sql
 SELECT
@@ -491,13 +405,11 @@ HAVING COUNT(*) > 1
 ORDER BY duplicate_count DESC;
 ```
 
-Duplikaty mogłyby prowadzić do podwójnego zliczania salda, przychodów odsetkowych oraz liczby aktywnych kredytów.
+Duplicates could cause outstanding balances, interest income, and active loan counts to be double-counted.
 
----
+#### Invalid snapshot values
 
-#### 2. Nieprawidłowe wartości w snapshotach
-
-Sprawdzono również nielogiczne wartości:
+The following checks identify implausible negative values:
 
 ```sql
 SELECT *
@@ -509,13 +421,7 @@ WHERE loan_age_months < 0
    OR estimated_credit_loss_pln < 0;
 ```
 
-Podczas tej kontroli znaleziono ujemne wartości `monthly_interest_income_pln`.
-
-Dalsza analiza wykazała jednak, że wszystkie takie rekordy były powiązane z kredytami posiadającymi nieprawidłowe ujemne `interest_rate`.
-
-Problem nie był więc niezależnym błędem tabeli snapshot, lecz skutkiem błędnych danych w tabeli `loans`.
-
-Zamiast filtrować ujemny przychód bezpośrednio w tabeli snapshot, problem usunięto u źródła poprzez wykluczenie błędnych kredytów.
+Negative `monthly_interest_income_pln` values were traced to loans with invalid negative `interest_rate`. The issue originated in `loans`, rather than being an independent snapshot data issue. Instead of filtering negative income directly in the snapshot table, the invalid loans were excluded at the source:
 
 ```sql
 CREATE OR REPLACE VIEW v_loan_monthly_snapshot_clean AS
@@ -540,49 +446,30 @@ WHERE s.loan_age_months >= 0
   AND s.estimated_credit_loss_pln >= 0;
 ```
 
-Takie podejście usuwa przyczynę błędu zamiast jedynie jego skutku i zapobiega propagowaniu nieprawidłowych danych do KPI.
+This removes the cause of the issue and prevents invalid data from propagating into KPIs. The record count decreased from **1,265,930 to 1,264,613**; **1,317 snapshots** were excluded.
 
-Liczba rekordów zmniejszyła się z:
+**Potential improvement:** Validate loan interest rates before generating monthly snapshots so that invalid rates cannot affect later interest income.
 
-**1 265 930 do 1 264 613**
+<a id="products-and-relationships"></a>
+### 📦 Products and relationships
 
-Łącznie wykluczono **1 317 snapshotów**.
-
-**Potencjalne usprawnienie:** Walidować oprocentowanie kredytu przed generowaniem miesięcznych snapshotów, tak aby błędna wartość nie mogła wpływać na późniejsze przychody odsetkowe.
-
----
-
-### 📦 Tabela `products`
-
-Tabela `products` pełni funkcję wymiaru produktowego.
-
-Sprawdzono:
-
-- brakujące wartości,
-- duplikaty `product_id`,
-- kompletność nazw produktów,
-- `customer_segment`,
-- `security_type`,
-- `repayment_type`,
-- `base_rate`,
-- `annual_fee_rate`,
-- spójność kategorii tekstowych.
-
-Przykładowe kontrole:
+The `products` table serves as the product dimension. Checks covered missing values, duplicate `product_id` values, product names, `customer_segment`, `security_type`, `repayment_type`, `base_rate`, `annual_fee_rate`, and consistency of text categories.
 
 ```sql
 SELECT DISTINCT customer_segment
 FROM products
 ORDER BY customer_segment;
+
 SELECT DISTINCT security_type
 FROM products
 ORDER BY security_type;
+
 SELECT DISTINCT repayment_type
 FROM products
 ORDER BY repayment_type;
 ```
 
-Sprawdzono również ujemne wartości stawek:
+Negative rate values were checked separately:
 
 ```sql
 SELECT *
@@ -591,9 +478,7 @@ WHERE base_rate < 0
    OR annual_fee_rate < 0;
 ```
 
-Nie zidentyfikowano istotnych problemów wymagających korekty.
-
-Mimo to utworzono osobny widok przeznaczony do dalszej analizy:
+No significant issues requiring correction were identified. A cleaned view was still created so that Power BI uses validated SQL views rather than the source table directly:
 
 ```sql
 CREATE OR REPLACE VIEW v_products_clean AS
@@ -615,17 +500,11 @@ WHERE product_id IS NOT NULL
   AND annual_fee_rate >= 0;
 ```
 
-Dzięki temu Power BI korzysta z uporządkowanych i zwalidowanych widoków SQL zamiast bezpośrednio z tabel źródłowych.
+All **8 products** remained in the table.
 
-W tabeli pozostało wszystkich **8 produktów**.
+**Potential improvement:** Restrict categorical fields to a controlled vocabulary in the source system.
 
-**Potencjalne usprawnienie:** Ograniczyć wartości pól kategorycznych do kontrolowanego słownika na poziomie systemu źródłowego.
-
----
-
-Sprawdzono również relacje pomiędzy tabelami oraz sprawdzono utworzone widoki.
-
-Przykładowo zweryfikowano, czy każda płatność odnosi się do istniejącego kredytu:
+Relationships between tables and the resulting views were also validated. For example, the following query checks whether each payment refers to an existing loan:
 
 ```sql
 SELECT
@@ -636,63 +515,52 @@ LEFT JOIN loans l
 WHERE l.loan_id IS NULL;
 ```
 
-Analogiczne kontrole przeprowadzono dla relacji:
+Equivalent checks covered:
 
-- `loans → customers`,
-- `loans → products`,
-- `payments → loans`,
-- `payments → customers`,
-- `loan_monthly_snapshot → loans`.
+- `loans → customers`
+- `loans → products`
+- `payments → loans`
+- `payments → customers`
+- `loan_monthly_snapshot → loans`
 
+<a id="data-model"></a>
+## 🔗 Data model
 
-## Model danych 🔗
+After data preparation, the tables were organized into a relational Power BI model centered on `v_loans_clean`, which connects customer and product details with monthly loan snapshots and payment history.
 
-Po przygotowaniu danych zostały one zorganizowane w relacyjny model Power BI oparty na tabeli `v_loans_clean`, która pełni centralną rolę i łączy informacje o klientach, produktach, miesięcznych stanach kredytów oraz płatnościach.
-
-Większość relacji ma klasyczną strukturę jeden-do-wielu. 
-
-
-Najważniejsze relacje w modelu:
+Most relationships follow a one-to-many structure:
 
 | From | Cardinality | To | Filter direction | Status |
-| --- | --- | --- | --- | --- |
+|---|---|---|---|---|
 | `v_loan_monthly_snapshot_clean[loan_id]` | `*:1` | `v_loans_clean[loan_id]` | `v_loans_clean → v_loan_monthly_snapshot_clean` | Active |
 | `v_loans_clean[customer_id]` | `*:1` | `v_customers_clean[customer_id]` | `v_customers_clean → v_loans_clean` | Active |
 | `v_loans_clean[product_id]` | `*:1` | `v_products_clean[product_id]` | `v_products_clean → v_loans_clean` | Active |
 | `v_payments_clean[loan_id]` | `*:1` | `v_loans_clean[loan_id]` | `v_loans_clean → v_payments_clean` | Active |
 
-Tabela `v_customers_clean` zawiera jeden rekord dla każdego klienta. Jeden klient może posiadać wiele kredytów, dlatego relacja z `v_loans_clean` ma charakter `1:*`. Dzięki temu filtrowanie po typie klienta, profilu ryzyka, scoringu kredytowym czy lokalizacji może wpływać na analizę przypisanych do niego kredytów.
+`v_customers_clean` contains one record per customer. A customer may have multiple loans, so the relationship to `v_loans_clean` is `1:*`. This allows filters such as customer type, risk profile, credit score, and location to affect the analysis of their loans.
 
-Tabela `v_products_clean` pełni funkcję wymiaru produktowego. Jeden produkt kredytowy może występować w wielu umowach kredytowych. Relacja z `v_loans_clean` umożliwia analizę portfela według takich cech jak nazwa produktu, segment klienta, rodzaj zabezpieczenia czy sposób spłaty.
+`v_products_clean` is the product dimension. A product may appear in many loan agreements, enabling portfolio analysis by product name, customer segment, security type, and repayment type.
 
-Tabela `v_loans_clean` pełni centralną rolę w modelu. Każdy kredyt jest przypisany do jednego klienta i jednego produktu, ale może być powiązany z wieloma płatnościami oraz wieloma miesięcznymi obserwacjami. Dzięki temu stanowi główny punkt łączący informacje opisowe z danymi transakcyjnymi i miesięcznymi.
+`v_loans_clean` is the central table. Each loan is associated with one customer and one product, and may be linked to multiple payments and monthly observations. It connects descriptive data with transactional and monthly data.
 
-Tabela `v_loan_monthly_snapshot_clean` przechowuje miesięczny stan każdego kredytu. Jeden kredyt może pojawiać się w niej wielokrotnie — po jednym rekordzie dla każdego miesiąca. Na podstawie tej tabeli analizowane są między innymi saldo do spłaty, Days Past Due, miesięczny przychód odsetkowy oraz Estimated Credit Loss.
+`v_loan_monthly_snapshot_clean` stores each loan's monthly status, including outstanding balance, Days Past Due, monthly interest income, and Estimated Credit Loss. A loan may have one observation for each month.
 
-Tabela `v_payments_clean` zawiera historię spłat. Jeden kredyt może posiadać wiele płatności, dlatego relacja z `v_loans_clean` również ma strukturę `1:*`. Tabela ta służy przede wszystkim do analizy zachowania płatniczego klientów oraz wskaźnika Collection Ratio.
+`v_payments_clean` contains payment history. A loan may have multiple payments, so this table also has a `1:*` relationship to `v_loans_clean`. It is primarily used to analyze payment behavior and Collection Ratio.
 
-Relacje w modelu są aktywne i wykorzystują jednokierunkowe filtrowanie od tabel po stronie `1` do tabel po stronie `*`. Dzięki temu filtr wybrany na poziomie klienta lub produktu może przejść przez `v_loans_clean` i wpłynąć na dane dotyczące miesięcznych stanów kredytów oraz płatności.
+All relationships are active and use single-direction filtering from the `1` side to the `*` side. A filter on a customer or product flows through `v_loans_clean` to the related monthly snapshots and payments.
 
-Taki układ pozwala analizować portfel z kilku perspektyw jednocześnie: klienta, produktu, kredytu, zachowania w czasie oraz historii spłat.
+This model supports analysis across customers, products, loans, performance over time, and payment history.
 
-![Model relationships](images/data_model.png)
+![Power BI data model](images/data_model.png)
 
-## Analiza danych przy użyciu DAX 📈
+<a id="dax-analysis"></a>
+## 📈 DAX analysis
 
-Po zbudowaniu modelu danych utworzono miary DAX, które przekształcają dane o kredytach, miesięcznych stanach portfela oraz płatnościach w kluczowe wskaźniki wykorzystywane w analizie ryzyka kredytowego i rentowności.
+After building the data model, DAX measures were created to turn loan, monthly portfolio, and payment data into indicators for credit risk and profitability analysis.
 
-Najważniejsze obszary analizy obejmują:
+The main analytical areas include portfolio value, active loans, DPD30+ and DPD90+ delinquency, interest income, Estimated Credit Loss, Risk Adjusted Income, the latest portfolio position, and payment effectiveness.
 
-- wartość portfela kredytowego,
-- liczbę aktywnych kredytów,
-- poziom zaległości DPD30+ i DPD90+,
-- przychody odsetkowe,
-- Estimated Credit Loss,
-- Risk Adjusted Income,
-- bieżący stan portfela dla najnowszego miesiąca,
-- skuteczność spłat klientów.
-
-Poniżej przedstawiono najważniejsze miary używane w raporcie.
+### Portfolio balance
 
 ```DAX
 Outstanding Balance =
@@ -701,9 +569,9 @@ SUM(
 )
 ```
 
-Oblicza łączną wartość salda pozostającego do spłaty w bieżącym kontekście filtrowania.
+Calculates the total outstanding balance in the current filter context. It is used to analyze portfolio size and changes over time.
 
-Miara jest wykorzystywana do analizy wielkości portfela kredytowego oraz jego zmian w czasie.
+### Delinquency rates
 
 ```DAX
 DPD30 Rate =
@@ -714,9 +582,7 @@ DIVIDE(
 )
 ```
 
-Oblicza udział kredytów z opóźnieniem wynoszącym co najmniej 30 dni w całkowitej liczbie aktywnych kredytów.
-
-Miara pozwala obserwować wczesne pogorszenie jakości portfela.
+Calculates the share of active loans at least 30 days past due and helps identify early deterioration in portfolio quality.
 
 ```DAX
 DPD90 Rate =
@@ -727,9 +593,9 @@ DIVIDE(
 )
 ```
 
-Oblicza udział kredytów z opóźnieniem wynoszącym co najmniej 90 dni.
+Calculates the share of loans at least 90 days past due. This is a key risk measure for comparing portfolio quality across products, customer segments, and risk profiles.
 
-Wskaźnik jest jednym z głównych elementów analizy ryzyka i służy do porównywania jakości portfela pomiędzy produktami, segmentami klientów i profilami ryzyka.
+### Income and risk-adjusted income
 
 ```DAX
 Interest Income =
@@ -738,7 +604,7 @@ SUM(
 )
 ```
 
-Oblicza łączną wartość przychodów odsetkowych wygenerowanych przez analizowany portfel.
+Calculates total interest income generated by the portfolio in the current context.
 
 ```DAX
 Estimated Credit Loss =
@@ -747,18 +613,18 @@ SUM(
 )
 ```
 
-Oblicza łączną wartość szacowanych strat kredytowych.
-
-Miara jest wykorzystywana do oceny wpływu ryzyka kredytowego na wynik portfela.
+Calculates total estimated credit losses and is used to assess the impact of credit risk on portfolio performance.
 
 ```DAX
 Risk Adjusted Income =
 [Interest Income] - [Estimated Credit Loss]
 ```
 
-Oblicza różnicę pomiędzy przychodami odsetkowymi a szacowaną stratą kredytową.
+Calculates the difference between interest income and estimated credit loss. In this project, it is a simplified risk-adjusted income measure used to assess whether portfolio income offsets expected credit losses.
 
-W projekcie miara ta pełni funkcję prostego wskaźnika dochodu skorygowanego o ryzyko i pozwala ocenić, czy przychody generowane przez portfel rekompensują oczekiwane straty kredytowe.
+### Latest portfolio position
+
+The report also uses the latest snapshot date to calculate current portfolio KPIs:
 
 ```DAX
 Current Outstanding Balance =
@@ -770,10 +636,6 @@ CALCULATE(
 )
 ```
 
-Oblicza saldo portfela dla najnowszego dostępnego miesiąca.
-
-Miara jest wykorzystywana w kartach KPI oraz w analizach przekrojowych pokazujących aktualny stan portfela.
-
 ```DAX
 Current Active Loans =
 VAR LatestDate = [Latest Snapshot Date]
@@ -783,8 +645,6 @@ CALCULATE(
     v_loan_monthly_snapshot_clean[snapshot_month] = LatestDate
 )
 ```
-
-Oblicza liczbę aktywnych kredytów dla najnowszego dostępnego miesiąca.
 
 ```DAX
 Current DPD90 Rate =
@@ -796,9 +656,9 @@ CALCULATE(
 )
 ```
 
-Zwraca wartość DPD90 Rate dla najnowszego dostępnego miesiąca.
+These measures return the balance, number of active loans, and DPD90 Rate for the latest available month. They are used in KPI cards and cross-sectional analyses.
 
-Miara jest wykorzystywana do prezentowania aktualnego poziomu poważnych zaległości w portfelu.
+### Payments
 
 ```DAX
 Collection Ratio =
@@ -809,311 +669,169 @@ DIVIDE(
 )
 ```
 
-Oblicza relację pomiędzy faktycznie zapłaconą kwotą a kwotą należną.
-
-Wskaźnik pokazuje skuteczność spłat klientów w analizowanym portfelu.
+Calculates the amount paid divided by the amount due, showing payment effectiveness for the selected portfolio.
 
 ```DAX
 Payment Count =
 COUNTROWS(v_payments_clean)
 ```
 
-Oblicza liczbę rekordów płatności.
+Counts payment records and supports comparisons by payment status, such as `On time` and `Late`.
 
-Miara jest wykorzystywana do porównywania liczby płatności według statusu, np. `On time` i `Late`.
+The complete DAX measure reference is available in [`NovaBank_DAX_Measures.txt`](NovaBank_DAX_Measures.txt).
 
-Pełny słownik miar DAX znajduje się w pliku **`NovaBank_DAX_Measures.txt`**.
+<a id="report-structure-and-findings"></a>
+## 📊 Report structure and findings
 
-## Struktura raportu i przebieg analizy 📊
-
-Raport Power BI składa się łącznie z **6 stron**. Cztery z nich tworzą główną historię analityczną, natomiast dwie dodatkowe wspierają bardziej szczegółową eksplorację danych za pomocą funkcji **Tooltip** i **Drillthrough**.
-
-Analiza została ułożona tak, aby przechodzić od ogólnego obrazu portfela, przez koncentrację ryzyka według produktów i klientów, aż do zachowań płatniczych oraz wyniku skorygowanego o ryzyko.
-
----
+The Power BI report contains **6 pages**: four pages that form the main analytical narrative, plus Tooltip and Drillthrough pages for deeper exploration. The sequence moves from the overall portfolio view to product and customer risk, payment behavior, and risk-adjusted performance.
 
 ### 1. Credit Portfolio Executive Overview 🏠
 
-Pierwsza strona odpowiada na pytanie:
+This page answers: **What is the overall condition of the loan portfolio, and how has it changed over time?**
 
-**Jak wygląda ogólna kondycja portfela kredytowego i jak zmieniała się ona w czasie?**
+It presents the latest portfolio KPIs:
 
-Strona prezentuje najważniejsze KPI dla aktualnego stanu portfela:
+- **Current Outstanding Balance**
+- **Current Active Loans**
+- **Current DPD90 Rate**
+- **Current Risk Adjusted Income**
 
-- **Current Outstanding Balance**,
-- **Current Active Loans**,
-- **Current DPD90 Rate**,
-- **Current Risk Adjusted Income**.
-
-Dodatkowo znajdują się na niej dwa wykresy czasowe:
-
-- zmiana wartości **Outstanding Balance**,
-- zmiana **DPD30 Rate** i **DPD90 Rate**.
-
-Strona może być filtrowana za pomocą:
-
-- `snapshot_month`,
-- `customer_segment`,
-- `product_name`.
+Two time-series charts show Outstanding Balance and DPD30 Rate/DPD90 Rate. Filters are available for `snapshot_month`, `customer_segment`, and `product_name`.
 
 ![Report page 1](images/Strona_1.png)
 
-#### Najważniejsze obserwacje 💡
+#### Key findings 💡
 
-Aktualna wartość portfela wynosi około **8,52 mld PLN**, przy około **67,6 tys. aktywnych kredytów**.
+The current portfolio is worth approximately **PLN 8.52 billion**, with around **67,600 active loans**. It grew rapidly from less than **PLN 1 billion in early 2024** to around **PLN 9 billion in 2026**, followed by a small decline.
 
-Wartość portfela rosła bardzo dynamicznie — z poziomu poniżej **1 mld PLN na początku 2024 roku** do około **9 mld PLN w 2026 roku**, po czym nastąpił niewielki spadek do obecnego poziomu.
+Despite this growth, DPD90 Rate remained relatively stable at around **0.2–0.3%**, while DPD30 Rate was mostly around **0.8–1.0%**. Portfolio growth did not result in a proportional increase in severe delinquency.
 
-Pomimo silnego wzrostu portfela **DPD90 Rate pozostawał stosunkowo stabilny**, zwykle na poziomie około **0,2–0,3%**. DPD30 Rate utrzymywał się głównie w przedziale około **0,8–1,0%**.
-
-Oznacza to, że rozwój portfela nie przełożył się na proporcjonalne pogorszenie poziomu poważnych zaległości.
-
-Jednocześnie **Current Risk Adjusted Income wynosi około -54,96 mln PLN**, co pokazuje, że stabilny poziom DPD90 nie oznacza automatycznie korzystnego wyniku po uwzględnieniu Estimated Credit Loss.
-
----
+However, **Current Risk Adjusted Income is approximately -PLN 54.96 million**. Stable DPD90 does not necessarily mean that portfolio performance is positive after Estimated Credit Loss is taken into account.
 
 ### 2. Risk Concentration by Product 💳
 
-Druga strona przesuwa analizę z poziomu całego portfela na poziom poszczególnych produktów kredytowych.
+This page shifts the focus from the overall portfolio to individual products and asks: **Which products have the largest exposure and the highest risk?**
 
-Odpowiada przede wszystkim na pytanie:
-
-**W których produktach koncentruje się największa ekspozycja i najwyższe ryzyko?**
-
-Analizowane są trzy główne obszary:
-
-- **Current Outstanding Balance by Product**,
-- **Current DPD90 Rate by Product**,
-- **Risk Adjusted Income by Product**.
-
-Strona może być filtrowana za pomocą:
-
-- `snapshot_month`,
-- `security_type`,
-- `repayment_type`.
+It compares Current Outstanding Balance by Product, Current DPD90 Rate by Product, and Risk Adjusted Income by Product. Filters are available for `snapshot_month`, `security_type`, and `repayment_type`.
 
 ![Report page 2](images/Strona_2.png)
 
-#### Najważniejsze obserwacje 💡
+#### Key findings 💡
 
-Największą ekspozycję posiada **Mortgage**, którego saldo wynosi około **3,2 mld PLN**, czyli około **37–38% całego aktualnego portfela**.
+**Mortgage** has the largest exposure, with a balance of approximately **PLN 3.2 billion**, or **37–38%** of the current portfolio. The next largest products are **SME Term Loan** at around **PLN 2.0 billion** and **SME Investment Loan** at around **PLN 1.5–1.6 billion**. Together, these products represent most of the portfolio exposure.
 
-Kolejne największe produkty to:
+The highest **Current DPD90 Rate** is observed for **Business Overdraft**, at around **0.8%**, despite its relatively small exposure. **SME Term Loan** also has an elevated DPD90 Rate of approximately **0.5%**. Mortgage, despite having the largest balance, has one of the lowest DPD90 rates.
 
-- **SME Term Loan** — około **2,0 mld PLN**,
-- **SME Investment Loan** — około **1,5–1,6 mld PLN**.
+This shows that exposure size and risk intensity are different:
 
-Łącznie te trzy produkty odpowiadają za większość całkowitej ekspozycji portfela, co wskazuje na wyraźną koncentrację wartości kredytów w kilku produktach.
+- Mortgage primarily contributes concentration risk because of its scale.
+- Business Overdraft has the highest intensity of delinquency.
 
-Jednocześnie najwyższy **Current DPD90 Rate** występuje dla **Business Overdraft** i wynosi około **0,8%**, mimo że produkt ten posiada stosunkowo niewielką ekspozycję.
-
-**SME Term Loan** również wyróżnia się podwyższonym poziomem DPD90 — około **0,5%**.
-
-Z kolei **Mortgage**, mimo największego salda, posiada jeden z najniższych poziomów DPD90.
-
-Pokazuje to, że **wartość ekspozycji i intensywność ryzyka nie są tym samym**:
-
-- Mortgage generuje przede wszystkim ryzyko koncentracji wynikające z dużej skali,
-- Business Overdraft charakteryzuje się najwyższą intensywnością zaległości.
-
-Analiza Risk Adjusted Income pokazuje również, że największy ujemny wynik przypada na Mortgage, następnie SME Term Loan i SME Investment Loan.
-
-Oznacza to, że produkt o relatywnie niskim DPD90 może nadal mieć duży wpływ na wynik portfela, jeżeli jego ekspozycja jest bardzo wysoka.
-
----
+Mortgage also has the largest negative Risk Adjusted Income, followed by SME Term Loan and SME Investment Loan. A product with relatively low DPD90 can still materially affect portfolio results if its exposure is very large.
 
 ### 3. Customer Risk Drivers 👥
 
-Trzecia strona skupia się na pytaniu:
+This page asks: **Which customer characteristics are associated with higher credit risk?**
 
-**Jakie cechy klientów są związane z wyższym poziomem ryzyka kredytowego?**
-
-Główna macierz porównuje klientów Retail i SME według profilu ryzyka, wykorzystując:
-
-- **Current Outstanding Balance**,
-- **Current Active Loans**,
-- **Current DPD90 Rate**.
-
-Dodatkowe wykresy pokazują:
-
-- Current DPD90 Rate według `risk_profile`,
-- Current DPD30 Rate i Current DPD90 Rate według `Credit Score Band`.
-
-Dostępne filtry:
-
-- `customer_type`,
-- `risk_profile`,
-- `Credit Score Band`.
+A matrix compares Retail and SME customers by risk profile using Current Outstanding Balance, Current Active Loans, and Current DPD90 Rate. Additional charts show Current DPD90 Rate by `risk_profile` and Current DPD30 Rate/Current DPD90 Rate by Credit Score Band. Filters include `customer_type`, `risk_profile`, and Credit Score Band.
 
 ![Report page 3](images/Strona_3.png)
 
-#### Najważniejsze obserwacje 💡
+#### Key findings 💡
 
-Segment **Retail** odpowiada za około **6,65 mld PLN**, czyli około **78% aktualnego salda portfela**, natomiast SME za około **1,87 mld PLN**.
+Retail accounts for approximately **PLN 6.65 billion**, or **78%** of the current portfolio balance; SME accounts for around **PLN 1.87 billion**. Current DPD90 Rate is approximately **0.30% for Retail** and **0.26% for SME**, a relatively small difference.
 
-Current DPD90 Rate wynosi:
+Differences between risk profiles are more pronounced. Current DPD90 Rate is:
 
-- **Retail:** około **0,30%**,
-- **SME:** około **0,26%**.
+- **Very High:** 0.72%
+- **High:** 0.42%
+- **Medium:** 0.25%
+- **Low:** 0.19%
+- **Very Low:** 0.14%
 
-Różnica pomiędzy segmentami nie jest więc duża, natomiast znacznie większe różnice występują pomiędzy profilami ryzyka.
+Severe delinquency increases with the customer risk profile. However, the **Medium** risk group has the largest exposure, at approximately **PLN 3.07 billion**. The highest delinquency is not necessarily found in the segment with the largest portfolio balance.
 
-Current DPD90 Rate według profilu ryzyka wynosi:
-
-- **Very High:** **0,72%**,
-- **High:** **0,42%**,
-- **Medium:** **0,25%**,
-- **Low:** **0,19%**,
-- **Very Low:** **0,14%**.
-
-Widoczna jest więc wyraźna zależność: wraz ze wzrostem profilu ryzyka rośnie poziom poważnych zaległości.
-
-Największą wartość ekspozycji posiada jednak grupa **Medium**, z saldem około **3,07 mld PLN**. Oznacza to, że najwyższy poziom DPD nie zawsze występuje tam, gdzie znajduje się największa część portfela.
-
-Podobną zależność pokazuje Credit Score Band. Wraz ze wzrostem scoringu spada zarówno DPD30 Rate, jak i DPD90 Rate.
-
-Najwyższy poziom zaległości występuje w grupie **<580**, natomiast najniższy w grupie **780+**.
-
-Oznacza to, że zarówno **Risk Profile**, jak i **Credit Score** dobrze różnicują klientów pod względem ryzyka kredytowego.
-
----
+Credit Score Band shows a similar pattern: both DPD30 Rate and DPD90 Rate decrease as credit scores increase. Delinquency is highest in the **<580** band and lowest in the **780+** band. Both Risk Profile and Credit Score distinguish customers by credit risk.
 
 ### 4. Payments & Profitability 💰
 
-Czwarta strona łączy zachowania płatnicze klientów z analizą wyniku finansowego portfela.
+This page connects customer payment behavior with portfolio financial performance and asks: **Does effective repayment also result in positive performance after credit risk is considered?**
 
-Odpowiada na pytanie:
-
-**Czy wysoka skuteczność spłat przekłada się również na korzystny wynik po uwzględnieniu ryzyka kredytowego?**
-
-Strona wykorzystuje między innymi:
-
-- **Risk Adjusted Income**,
-- **Collection Ratio**,
-- **Payment Count**,
-- **Interest Income**,
-- **Estimated Credit Loss**.
-
-Dostępne filtry:
-
-- `product_name`,
-- `customer_segment`,
-- `payment_status`.
+It includes Risk Adjusted Income, Collection Ratio, Payment Count, Interest Income, and Estimated Credit Loss. Filters are available for `product_name`, `customer_segment`, and `payment_status`.
 
 ![Report page 4](images/Strona_4.png)
 
-#### Najważniejsze obserwacje 💡
+#### Key findings 💡
 
-**Collection Ratio wynosi 99,52%**, a zdecydowana większość płatności posiada status `On time`.
+**Collection Ratio is 99.52%**, and most payments have the `On time` status, indicating very high current payment effectiveness.
 
-Pokazuje to bardzo wysoką skuteczność bieżących spłat.
+At the same time, Risk Adjusted Income for the analyzed period is approximately **-PLN 1.10 billion**. Under the definition used in this project, Estimated Credit Loss exceeds generated interest income.
 
-Jednocześnie Risk Adjusted Income dla analizowanego okresu wynosi około **-1,10 mld PLN**.
+Estimated Credit Loss is higher than Interest Income for the major products, particularly:
 
-W ramach przyjętej w projekcie definicji oznacza to, że suma Estimated Credit Loss przewyższa wygenerowane przychody odsetkowe.
+- SME Term Loan
+- Mortgage
+- SME Investment Loan
 
-Na wykresie produktowym widać, że Estimated Credit Loss jest wyższy od Interest Income dla głównych produktów, szczególnie:
+The key takeaway is that **high payment effectiveness does not automatically mean positive risk-adjusted performance**. A portfolio can have an excellent Collection Ratio and still generate negative Risk Adjusted Income if expected credit losses are high.
 
-- SME Term Loan,
-- Mortgage,
-- SME Investment Loan.
+### 5. Product summary Tooltip 💬
 
-Najważniejszy wniosek z tej strony jest więc taki, że **wysoka skuteczność płatności nie oznacza automatycznie dodatniego wyniku skorygowanego o ryzyko**.
+The report includes a hidden **Tooltip** page that provides context without requiring the user to leave the current chart. Hovering over a product displays:
 
-Portfel może mieć bardzo dobry Collection Ratio i jednocześnie generować ujemny Risk Adjusted Income, jeżeli poziom oczekiwanych strat kredytowych jest wysoki.
+- **Current Outstanding Balance**
+- **Current DPD90 Rate**
+- **Estimated Credit Loss**
+- **Risk Adjusted Income**
+- **Collection Ratio**
 
----
+This enables quick comparisons of exposure, risk, and product performance.
 
-### 5. Tooltip — podsumowanie produktu 💬
+### 6. Product detail Drillthrough 🔎
 
-Raport zawiera również ukrytą stronę typu **Tooltip**, która dostarcza dodatkowego kontekstu bez opuszczania aktualnego wykresu.
+The report also includes a **Drillthrough** page based on `product_name`. It allows users to move from product-level analysis to a detailed view of a selected product.
 
-Po wskazaniu produktu użytkownik może zobaczyć:
+The table includes `product_name`, `risk_profile`, Current Outstanding Balance, Current Active Loans, Current DPD30 Rate, Current DPD90 Rate, Estimated Credit Loss, Risk Adjusted Income, and Collection Ratio. This makes it possible to identify which risk profiles within a product account for the greatest exposure and delinquency.
 
-- **Current Outstanding Balance**,
-- **Current DPD90 Rate**,
-- **Estimated Credit Loss**,
-- **Risk Adjusted Income**,
-- **Collection Ratio**.
+<a id="business-recommendations"></a>
+## ✅ Business recommendations
 
-Tooltip umożliwia szybkie porównanie skali ekspozycji, poziomu ryzyka i wyniku produktu bez przechodzenia do osobnej strony raportu.
+The analysis highlights several areas that merit attention:
 
----
+- **Monitor Business Overdraft more closely** because it has the highest DPD90 Rate. Review credit limits, customer profiles, and exposure renewal rules.
+- **Monitor SME Term Loan for both risk and exposure.** It combines a relatively large portfolio balance with one of the highest DPD90 rates.
+- **Manage concentration risk in Mortgage.** Despite its low DPD90, it represents the largest share of the portfolio, so even a small deterioration could materially affect the bank.
+- **Continue using Risk Profile and Credit Score as key monitoring dimensions.** Both clearly distinguish delinquency levels and can inform monitoring intensity.
+- **Review Very High risk customers and customers with low credit scores in more detail.** Consider additional limits, more frequent monitoring, or more conservative lending rules.
+- **Assess Collection Ratio alongside Estimated Credit Loss.** Strong current payment performance does not automatically mean positive risk-adjusted returns.
+- **Assess product profitability using both exposure size and risk.** DPD alone is not sufficient to evaluate a product's economics.
 
-### 6. Drillthrough — szczegółowa analiza produktu 🔎
+<a id="further-analysis"></a>
+## 🚀 Further analysis
 
-Raport zawiera również stronę typu **Drillthrough** opartą na polu:
+Potential next steps include:
 
-`product_name`
+- **DPD migration analysis:** Track how loans move between `Current`, DPD30+, DPD60+, and DPD90+ and identify which customer groups deteriorate most often.
+- **Vintage analysis:** Compare loans by origination month or year to determine whether newer cohorts perform better or worse than earlier ones.
+- **Roll-rate analysis:** Measure the probability of a loan moving from one delinquency category to the next.
+- **Secured vs. unsecured product comparison:** Test whether collateral is associated with lower DPD and Estimated Credit Loss.
+- **Expanded profitability analysis:** The current Risk Adjusted Income is a simplified measure based on Interest Income and Estimated Credit Loss. A more advanced analysis could include funding and operating costs, fees, and cost of capital.
+- **Predictive risk model:** Use Credit Score, Risk Profile, product type, DPD history, income, and other features to predict the probability of a customer reaching DPD90+.
+- **Early warning system:** Automatically flag customers for additional monitoring when DPD or other indicators deteriorate over successive months.
 
-Pozwala ona przejść z analizy produktowej do bardziej szczegółowego widoku wybranego produktu.
+<a id="summary"></a>
+## 📝 Summary
 
-Tabela zawiera między innymi:
+This project demonstrates an end-to-end loan portfolio analysis workflow: data quality checks and preparation of consistent SQL views, a relational Power BI model, and a report that guides users from an overall portfolio view to more detailed analysis of products, customers, payments, and risk.
 
-- `product_name`,
-- `risk_profile`,
-- **Current Outstanding Balance**,
-- **Current Active Loans**,
-- **Current DPD30 Rate**,
-- **Current DPD90 Rate**,
-- **Estimated Credit Loss**,
-- **Risk Adjusted Income**,
-- **Collection Ratio**.
+The analysis uses five core tables covering customers, loans, monthly loan snapshots, payments, and products. Source tables were preserved after data quality checks, while cleaned SQL views were used for analysis. This made it possible to remove duplicates, exclude invalid loans, retain logically missing values, and maintain consistent relationships between tables.
 
-Dzięki temu możliwe jest sprawdzenie, które profile ryzyka w ramach wybranego produktu odpowiadają za największą ekspozycję i najwyższy poziom zaległości.
+The Power BI report contains four main analytical pages, plus Tooltip and Drillthrough pages. It moves from overall portfolio performance through product and customer risk concentration to payment behavior and risk-adjusted results.
 
+NovaBank's portfolio is worth approximately **PLN 8.52 billion** and contains around **67,600 active loans**. It grew rapidly during the analyzed period, while DPD90 Rate remained relatively stable at approximately **0.29%**.
 
-## Rekomendacje biznesowe ✅
+Risk is not evenly distributed. Mortgage accounts for the largest share of exposure, while Business Overdraft has the highest DPD90 Rate. Customer analysis also shows clear relationships between delinquency, risk profile, and Credit Score Band: higher-risk customers and those with lower scores are more likely to be past due.
 
-Analiza wskazuje kilka obszarów wymagających szczególnej uwagi.
+Collection Ratio is **99.52%**, indicating highly effective current repayments. Nevertheless, Risk Adjusted Income remains negative. Under the definition used in this project, interest income does not fully offset Estimated Credit Loss.
 
-- **Business Overdraft powinien być dokładniej monitorowany ze względu na najwyższy DPD90 Rate.** Warto przeanalizować limity kredytowe, profile klientów oraz zasady odnawiania ekspozycji.
-
-- **SME Term Loan wymaga monitorowania zarówno pod względem ryzyka, jak i skali ekspozycji.** Produkt łączy stosunkowo dużą wartość portfela z jednym z najwyższych poziomów DPD90.
-
-- **Mortgage wymaga kontroli ryzyka koncentracji.** Pomimo niskiego DPD90 produkt odpowiada za największą część całego portfela, dlatego nawet niewielkie pogorszenie jakości może mieć istotny wpływ na wynik banku.
-
-- **Risk Profile i Credit Score powinny pozostać istotnymi elementami monitorowania klientów.** Oba wskaźniki wyraźnie różnicują poziom zaległości i mogą być wykorzystywane do określania intensywności monitoringu.
-
-- **Klienci z kategorii Very High oraz niskimi wartościami Credit Score powinni być analizowani bardziej szczegółowo.** Można rozważyć dodatkowe limity, częstszy monitoring lub bardziej konserwatywne zasady przyznawania finansowania.
-
-- **Wysoki Collection Ratio powinien być utrzymywany, ale nie powinien być analizowany w oderwaniu od Estimated Credit Loss.** Dobra skuteczność bieżących płatności nie oznacza automatycznie, że portfel generuje korzystny wynik po uwzględnieniu ryzyka.
-
-- **Analiza rentowności produktów powinna uwzględniać zarówno skalę ekspozycji, jak i ryzyko.** Sam poziom DPD nie wystarcza do oceny ekonomicznej produktu.
-
----
-
-## Możliwości dalszego rozwoju analizy 🚀
-
-Wyniki wskazują kilka kierunków, które można rozwinąć w kolejnych etapach projektu.
-
-- **Analiza migracji DPD.** Warto zbadać, jak kredyty przechodzą pomiędzy poziomami `Current`, DPD30+, DPD60+ i DPD90+ oraz które grupy klientów najczęściej pogarszają swoją jakość.
-
-- **Vintage analysis.** Kredyty można porównywać według miesiąca lub roku udzielenia, aby sprawdzić, czy nowsze kohorty zachowują się lepiej czy gorzej od wcześniejszych.
-
-- **Analiza roll-rate.** Można zmierzyć prawdopodobieństwo przejścia kredytu z jednej kategorii zaległości do kolejnej.
-
-- **Porównanie produktów secured i unsecured.** Dalsza analiza może sprawdzić, czy zabezpieczenie rzeczywiście przekłada się na niższy poziom DPD i Estimated Credit Loss.
-
-- **Rozwinięcie analizy rentowności.** Obecny Risk Adjusted Income jest uproszczonym wskaźnikiem opartym na Interest Income i Estimated Credit Loss. W bardziej zaawansowanej analizie można dodać koszt finansowania, koszty operacyjne, opłaty oraz koszt kapitału.
-
-- **Model predykcyjny ryzyka.** Credit Score, Risk Profile, typ produktu, historia DPD, dochód i inne cechy mogą zostać wykorzystane do stworzenia modelu przewidującego prawdopodobieństwo przejścia klienta do DPD90+.
-
-- **System wczesnego ostrzegania.** Klienci, których DPD lub inne wskaźniki pogarszają się w kolejnych miesiącach, mogliby być automatycznie oznaczani do dodatkowego monitoringu.
-
-## Podsumowanie 📝
-
-Projekt pokazuje, jak można przeprowadzić kompletny proces analizy portfela kredytowego — od kontroli jakości danych i przygotowania spójnych widoków SQL, przez budowę modelu relacyjnego w Power BI, aż po stworzenie raportu prowadzącego użytkownika od ogólnego obrazu portfela do bardziej szczegółowej analizy produktów, klientów, płatności i ryzyka.
-
-Analiza została oparta na pięciu głównych tabelach obejmujących klientów, kredyty, miesięczne stany kredytów, płatności i produkty. Po weryfikacji jakości danych zachowano tabele źródłowe bez zmian, a do dalszej analizy wykorzystano oczyszczone widoki SQL. Pozwoliło to usunąć duplikaty, wykluczyć nieprawidłowe kredyty, zachować logiczne braki danych oraz zapewnić spójność relacji pomiędzy tabelami.
-
-Raport Power BI składa się z czterech głównych stron analitycznych oraz dodatkowych stron Tooltip i Drillthrough. Taki układ pozwala przejść od ogólnej kondycji portfela, przez koncentrację ryzyka według produktów i klientów, aż do analizy zachowań płatniczych i wyniku skorygowanego o ryzyko.
-
-Z perspektywy biznesowej NovaBank posiada portfel o wartości około **8,52 mld PLN** i około **67,6 tys.** aktywnych kredytów. W analizowanym okresie portfel dynamicznie rósł, podczas gdy DPD90 Rate pozostawał relatywnie stabilny i obecnie wynosi około **0,29%**.
-
-Ryzyko nie jest jednak rozłożone równomiernie. Mortgage odpowiada za największą część ekspozycji, natomiast Business Overdraft charakteryzuje się najwyższym poziomem DPD90. Analiza klientów pokazuje również wyraźną zależność pomiędzy poziomem ryzyka a risk_profile oraz Credit Score Band — klienci o wyższym profilu ryzyka i niższym scoringu częściej wykazują zaległości.
-
-Jednocześnie Collection Ratio wynosi **99,52%**, co wskazuje na bardzo wysoką skuteczność bieżących spłat. Mimo tego Risk Adjusted Income pozostaje ujemny. W ramach przyjętej w projekcie definicji oznacza to, że przychody odsetkowe nie rekompensują w pełni Estimated Credit Loss.
-
-Najważniejszy wniosek z projektu jest więc taki, że stabilny poziom zaległości i wysoka skuteczność spłat nie oznaczają automatycznie niskiego ryzyka ani dodatniego wyniku skorygowanego o ryzyko. Ocena portfela wymaga jednoczesnego uwzględnienia skali ekspozycji, jakości klientów, poziomu DPD oraz wpływu oczekiwanych strat kredytowych.
-
+The main conclusion is that stable delinquency and high repayment effectiveness do not automatically imply low risk or positive risk-adjusted performance. Portfolio assessment requires simultaneous consideration of exposure size, customer quality, DPD levels, and the effect of expected credit losses.
